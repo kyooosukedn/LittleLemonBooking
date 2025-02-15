@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Little Lemon - Book a Table</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        nav {
+            background-color: #495E57;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 5px 10px;
+        }
+        nav a:hover {
+            background-color: #374841;
+            border-radius: 4px;
+        }
+        .booking-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #495E57;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #374841;
+        }
+        .bookings {
+            margin-top: 30px;
+        }
+        select option:disabled {
+            background-color: #f0f0f0;
+            color: #999;
+        }
+        .success-message {
+            color: #28a745;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .error-message {
+            color: #dc3545;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .booking-item {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Little Lemon</h1>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/menu">Menu</a>
+            <a href="/book">Book</a>
+            <a href="/bookings">Reservations</a>
+        </nav>
+    </div>
+
+    <div class="booking-form">
+        <h2>Make a Reservation</h2>
+        
+        <div class="form-group">
+            <label for="name">First Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="date">Reservation Date:</label>
+            <input type="date" id="date" name="date" required>
+        </div>
+
+        <div class="form-group">
+            <label for="time">Reservation Time:</label>
+            <select id="time" name="time" required>
+                <option value="10">10:00</option>
+                <option value="11">11:00</option>
+                <option value="12">12:00</option>
+                <option value="13">13:00</option>
+                <option value="14">14:00</option>
+                <option value="15">15:00</option>
+                <option value="16">16:00</option>
+                <option value="17">17:00</option>
+                <option value="18">18:00</option>
+                <option value="19">19:00</option>
+                <option value="20">20:00</option>
+            </select>
+        </div>
+
+        <button type="button" onclick="makeReservation()">Reserve</button>
+        <div id="message"></div>
+    </div>
+
+    <div class="bookings">
+        <h3>Bookings For <span id="selected-date"></span></h3>
+        <div id="bookings-list"></div>
+    </div>
+
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Set current date as default and minimum date
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('date');
+            dateInput.value = today;
+            dateInput.min = today;
+            loadBookings(today);
+        });
+
+        // Load bookings when date changes
+        document.getElementById('date').addEventListener('change', function(e) {
+            loadBookings(e.target.value);
+        });
+
+        function formatTime(slot) {
+            return `${slot}:00`;
+        }
+
+        function loadBookings(date) {
+            document.getElementById('selected-date').textContent = date;
+            fetch(`/bookings/${date}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(bookings => {
+                    const bookingsList = document.getElementById('bookings-list');
+                    bookingsList.innerHTML = '';
+                    
+                    if (bookings.error) {
+                        bookingsList.innerHTML = `<p class="error-message">${bookings.error}</p>`;
+                        return;
+                    }
+                    
+                    if (bookings.length === 0) {
+                        bookingsList.innerHTML = '<p>No bookings for this date</p>';
+                        // Enable all time slots
+                        const timeSelect = document.getElementById('time');
+                        Array.from(timeSelect.options).forEach(option => {
+                            option.disabled = false;
+                        });
+                        return;
+                    }
+
+                    // Create booking list and disable booked slots
+                    const timeSelect = document.getElementById('time');
+                    Array.from(timeSelect.options).forEach(option => {
+                        const isBooked = bookings.some(b => b.reservation_slot === parseInt(option.value));
+                        option.disabled = isBooked;
+                    });
+
+                    bookings.forEach(booking => {
+                        const time = formatTime(booking.reservation_slot);
+                        const bookingItem = document.createElement('div');
+                        bookingItem.className = 'booking-item';
+                        bookingItem.textContent = `${booking.first_name} - ${time}`;
+                        bookingsList.appendChild(bookingItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('bookings-list').innerHTML = 
+                        '<p class="error-message">Error loading bookings. Please try again.</p>';
+                });
+        }
+
+        function makeReservation() {
+            const name = document.getElementById('name').value;
+            const date = document.getElementById('date').value;
+            const slot = document.getElementById('time').value;
+            const messageDiv = document.getElementById('message');
+
+            if (!name || !date || !slot) {
+                messageDiv.innerHTML = '<div class="error-message">Please fill in all fields</div>';
+                return;
+            }
+
+            const csrftoken = getCookie('csrftoken');
+
+            fetch('/book/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({
+                    first_name: name,
+                    reservation_date: date,
+                    reservation_slot: parseInt(slot)
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    messageDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                } else {
+                    messageDiv.innerHTML = '<div class="success-message">Booking successful!</div>';
+                    document.getElementById('name').value = '';
+                    loadBookings(date);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                messageDiv.innerHTML = 
+                    '<div class="error-message">Error making reservation. Please try again.</div>';
+            });
+        }
+    </script>
+</body>
+</html>

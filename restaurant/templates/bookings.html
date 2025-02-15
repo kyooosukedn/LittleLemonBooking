@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservations - Little Lemon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        nav {
+            background-color: #495E57;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 5px 10px;
+        }
+        nav a:hover {
+            background-color: #374841;
+            border-radius: 4px;
+        }
+        .bookings-container {
+            margin-top: 20px;
+        }
+        .date-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .date-selector input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .booking-item {
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+        .error-message {
+            color: #dc3545;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        h2 {
+            color: #495E57;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Little Lemon</h1>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+            <a href="/menu">Menu</a>
+            <a href="/book">Book</a>
+            <a href="/bookings">Reservations</a>
+        </nav>
+    </div>
+
+    <h2>Reservations</h2>
+
+    <div class="date-selector">
+        <label for="date">Select Date: </label>
+        <input type="date" id="date" name="date">
+    </div>
+
+    <div class="bookings-container">
+        <div id="bookings-list"></div>
+    </div>
+
+    <script>
+        function formatTime(slot) {
+            return `${slot}:00`;
+        }
+
+        function loadBookings(date) {
+            fetch(`/bookings/${date}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(bookings => {
+                    const bookingsList = document.getElementById('bookings-list');
+                    bookingsList.innerHTML = '';
+
+                    if (bookings.error) {
+                        bookingsList.innerHTML = `<div class="error-message">${bookings.error}</div>`;
+                        return;
+                    }
+
+                    if (bookings.length === 0) {
+                        bookingsList.innerHTML = '<div class="booking-item">No reservations for this date</div>';
+                        return;
+                    }
+
+                    // Sort bookings by time slot
+                    bookings.sort((a, b) => a.reservation_slot - b.reservation_slot);
+
+                    bookings.forEach(booking => {
+                        const time = formatTime(booking.reservation_slot);
+                        const bookingItem = document.createElement('div');
+                        bookingItem.className = 'booking-item';
+                        bookingItem.textContent = `${booking.first_name} - ${time}`;
+                        bookingsList.appendChild(bookingItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('bookings-list').innerHTML = 
+                        '<div class="error-message">Error loading reservations. Please try again.</div>';
+                });
+        }
+
+        // Set current date as default and load bookings
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('date');
+            dateInput.value = today;
+            loadBookings(today);
+        });
+
+        // Load bookings when date changes
+        document.getElementById('date').addEventListener('change', function(e) {
+            loadBookings(e.target.value);
+        });
+    </script>
+</body>
+</html>
